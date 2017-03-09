@@ -4,6 +4,10 @@
 #include "stdafx.h"
 #include <Windows.h>
 
+BOOL CALLBACK KillScreenSaverFunc(HWND hwnd, LPARAM lParam) {
+	if (IsWindowVisible(hwnd)) PostMessage(hwnd, WM_CLOSE, 0, 0);
+	return TRUE;
+}
 
 int _tmain(int argc, _TCHAR* argv[]) {
 	if ((argc > 2) || (argc == 2 && _tcscmp(argv[1], L"/?") == 0)) {
@@ -18,6 +22,25 @@ int _tmain(int argc, _TCHAR* argv[]) {
 		printf("                Bezeichnet den (optionalen) Fenstertitel, der aktiviert\r\n");
 		printf("                werden soll.\r\n");
 		return 0;
+	}
+
+	int ssRunning;
+	SystemParametersInfo(SPI_GETSCREENSAVERRUNNING, 0, &ssRunning, 0);
+
+	if (ssRunning) {
+		// Source https://support.microsoft.com/de-de/help/140723
+		HDESK hdesk;
+		hdesk = OpenDesktop(TEXT("Screen-saver"), 0, FALSE, DESKTOP_READOBJECTS | DESKTOP_WRITEOBJECTS);
+		if (hdesk) {
+			EnumDesktopWindows(hdesk, KillScreenSaverFunc, 0);
+			CloseDesktop(hdesk);
+		} else {
+			// Windows 2000 and later: 
+			// If there is no screen saver desktop, the screen saver 
+			// is on the default desktop. Close it by sending a 
+			// WM_CLOSE.
+			PostMessage(GetForegroundWindow(), WM_CLOSE, 0, 0L); 
+		}
 	}
 
 	SetThreadExecutionState(ES_DISPLAY_REQUIRED | ES_SYSTEM_REQUIRED);
